@@ -1,0 +1,21 @@
+# Local utilities and scripts (not tracked in git)
+.utils/
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Node modules (if applicable)
+node_modules/
