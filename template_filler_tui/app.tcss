@@ -1,0 +1,143 @@
+/* ── Global ─────────────────────────────────────────────── */
+
+Screen {
+    background: $surface;
+}
+
+/* ── Session Setup ─────────────────────────────────────── */
+
+#session-setup {
+    align: center middle;
+    width: 80;
+    height: auto;
+    max-height: 80%;
+    padding: 1 2;
+    border: thick $accent;
+    background: $panel;
+}
+
+#session-setup Label {
+    margin-bottom: 1;
+}
+
+#session-setup .title {
+    text-style: bold;
+    content-align: center middle;
+    width: 100%;
+    margin-bottom: 1;
+}
+
+#session-setup Input {
+    margin-bottom: 1;
+}
+
+#session-setup #saved-sessions {
+    height: auto;
+    max-height: 10;
+    margin-top: 1;
+    margin-bottom: 1;
+}
+
+#session-setup Button {
+    margin-top: 1;
+    width: 100%;
+}
+
+/* ── Step Browser ──────────────────────────────────────── */
+
+#step-browser {
+    layout: horizontal;
+    height: 100%;
+}
+
+#step-tree-panel {
+    width: 50;
+    height: 100%;
+    border-right: solid $accent;
+    overflow-y: auto;
+}
+
+#step-detail-panel {
+    width: 1fr;
+    height: 100%;
+    padding: 1 2;
+    overflow-y: auto;
+}
+
+#step-tree-panel Tree {
+    height: auto;
+}
+
+.template-option {
+    padding: 0 1;
+    margin: 0;
+}
+
+.template-option:hover {
+    background: $accent 30%;
+}
+
+/* ── Template Fill ─────────────────────────────────────── */
+
+#template-fill {
+    layout: vertical;
+    height: 100%;
+}
+
+#fill-header {
+    height: 3;
+    padding: 0 2;
+    background: $accent 15%;
+    content-align: left middle;
+}
+
+#fill-body {
+    layout: horizontal;
+    height: 1fr;
+}
+
+#template-panel {
+    width: 1fr;
+    height: 100%;
+    border-right: solid $accent;
+    overflow-y: auto;
+    padding: 0 1;
+}
+
+#preview-panel {
+    width: 1fr;
+    height: 100%;
+    overflow-y: auto;
+    padding: 0 1;
+}
+
+#input-panel {
+    height: auto;
+    max-height: 12;
+    padding: 1 2;
+    border-top: solid $accent;
+    background: $panel;
+}
+
+#input-panel Label {
+    margin-bottom: 0;
+}
+
+#input-panel .placeholder-name {
+    text-style: bold;
+    color: $warning;
+}
+
+#input-panel .placeholder-desc {
+    color: $text-muted;
+}
+
+#input-panel Input, #input-panel TextArea {
+    margin-top: 1;
+}
+
+#fill-footer {
+    height: 1;
+    background: $accent 15%;
+    padding: 0 1;
+}

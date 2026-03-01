@@ -19,3 +19,11 @@ Thumbs.db
 
 # Node modules (if applicable)
 node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
