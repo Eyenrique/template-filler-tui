@@ -78,6 +78,7 @@ class TemplateFillScreen(Screen):
                     yield self._build_input_widgets(p)
                 else:
                     yield Static("No placeholders to fill — template is ready.")
+                    yield Button("Copy to Clipboard", variant="success", id="copy-btn")
 
             # Footer
             unfilled = self._unfilled_count()
@@ -103,8 +104,8 @@ class TemplateFillScreen(Screen):
         container = Vertical()
         remembered = self.values.get(p.name)
 
-        name_label = Label(f"[{p.name}]", classes="placeholder-name")
-        desc_label = Label(p.description, classes="placeholder-desc")
+        name_label = Label(f"[{p.name}]", classes="placeholder-name", markup=False)
+        desc_label = Label(p.description, classes="placeholder-desc", markup=False)
 
         if p.ui_type in (UIType.TEXT, UIType.AI_FEEDBACK, UIType.LIST):
             hint = "Enter file path to read content, or paste text directly"
