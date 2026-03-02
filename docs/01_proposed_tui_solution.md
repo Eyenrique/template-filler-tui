@@ -139,23 +139,37 @@ The placeholder naming convention encodes the UI type deterministically:
 
 No ambiguity — every registered placeholder matches exactly one rule.
 
-### 5.3 Memory Layers
+### 5.3 Placeholder Values
 
-Three layers of value memory, checked in order:
+Placeholder values are managed through two mechanisms:
 
-| Layer | Scope | Persists | Example |
-|-------|-------|----------|---------|
-| **Session values** | Changes per session | Until session ends | `[PATH-DISC-CONV-NEXT-PHASE-FILE]` — different each time |
-| **Domain values** | Changes per domain | Across sessions | `[PATH-GOLDEN-METHODOLOGY-NEXT-PHASE-FILE]` — different for UX vs PM |
-| **Global values** | Never changes | Across sessions | `[PATH-PROMPT-GENERATION-STANDARDS-FILE]`, `[PATH-EXAMPLE-DISC-CONV-UX-PHASE-0-FILE]` — same always |
+#### Registry Values (Persistent)
 
-When a placeholder is encountered:
-1. Check session values first
-2. Then domain values
-3. Then global values
-4. If no match — prompt the user
+The Placeholder Registry (`Placeholder_Registry.md`) has a **Value** column. When the TUI launches, it reads this column and pre-fills any placeholder that has a value defined.
 
-The user can override any remembered value at any time.
+The Value column follows these conventions:
+
+| Value column content | TUI behavior |
+|---|---|
+| Empty | Ask the user to fill it manually |
+| Direct value (e.g., `/Users/.../file.md`) | Pre-fill the input with this value; user must confirm to use it |
+| File reference (`@/path/to/file.md`) | Read the file's content, pre-fill the input with that content; user must confirm |
+
+This is the single source of truth for persistent/global values. To add, change, or remove a persistent value, the user edits the registry file directly — the same way they edit the methodology file to change templates.
+
+#### PATH-type `@` Prefix
+
+For PATH-type placeholders (names starting with `PATH-`), the TUI always prepends `@` to the value in the input field. This applies whether the value comes from the registry or is entered manually. The `@` prefix is part of the final output that gets substituted into the template.
+
+This means PATH values in the registry are stored as clean paths (e.g., `/Users/.../file.md`), and the TUI displays them as `@/Users/.../file.md` in the input field.
+
+**Important:** The `@` prefix in the registry Value column (for file references) and the `@` prefix for PATH-type inputs are two different things:
+- Registry `@/path` → "read this file's content" (used for large TEXT-type values)
+- PATH-type input `@/path` → literal prefix that appears in the final template output
+
+#### Session Values (Temporary)
+
+Values entered during a session are remembered for the duration of that session. If the same placeholder appears in multiple templates within a session, the previously entered value is offered as the default. Session values are not persisted — they are lost when the app closes.
 
 ---
 
@@ -237,8 +251,8 @@ Methodology .md file
 User selects Step + Template
     -> Template text + placeholder list displayed
     -> For each fillable placeholder:
-        -> Check memory layers (session -> domain -> global)
-        -> If found: show remembered value, user confirms or overrides
+        -> Check registry Value column, then session memory
+        -> If found: pre-fill input, user confirms or overrides
         -> If not found: prompt with type-appropriate input
         -> On fill: update live preview immediately
     -> All filled -> copy to clipboard
