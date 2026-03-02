@@ -113,7 +113,7 @@ Screen {
 
 #input-panel {
     height: auto;
-    max-height: 12;
+    max-height: 16;
     padding: 1 2;
     border-top: solid $accent;
     background: $panel;
@@ -121,6 +121,15 @@ Screen {
 
 #input-panel Label {
     margin-bottom: 0;
+}
+
+#name-row {
+    height: auto;
+    width: 100%;
+}
+
+#name-row Label {
+    width: 1fr;
 }
 
 #input-panel .placeholder-name {
@@ -140,4 +149,61 @@ Screen {
     height: 1;
     background: $accent 15%;
     padding: 0 1;
+}
+
+/* ── Content Preview Modal ────────────────────────────── */
+
+ContentPreviewScreen {
+    align: center middle;
+}
+
+#preview-modal {
+    width: 90%;
+    height: 85%;
+    border: thick $accent;
+    background: $surface;
+    padding: 1 2;
+}
+
+#preview-modal-header {
+    height: auto;
+    width: 100%;
+}
+
+#preview-modal-info {
+    width: 1fr;
+    height: auto;
+}
+
+#preview-modal-title {
+    width: 1fr;
+    text-style: bold;
+    color: $warning;
+}
+
+#preview-line-count {
+    color: $text-muted;
+}
+
+#preview-source-path {
+    color: $text-muted;
+    width: 100%;
+    overflow: hidden;
+    text-wrap: wrap;
+}
+
+#preview-close-btn {
+    width: 5;
+    min-width: 5;
+}
+
+#preview-modal-content {
+    height: 1fr;
+    margin-top: 1;
+}
+
+/* Preview button in input panel */
+#preview-btn {
+    width: auto;
+    min-width: 10;
 }

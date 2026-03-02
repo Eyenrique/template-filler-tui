@@ -22,6 +22,7 @@ class TemplateFillScreen(Screen):
     BINDINGS = [
         Binding("escape", "go_back", "Back"),
         Binding("ctrl+y", "copy_to_clipboard", "Copy to clipboard"),
+        Binding("ctrl+o", "preview_content", "Preview content"),
         Binding("tab", "focus_next", "Next", show=False),
     ]
 
@@ -39,11 +40,14 @@ class TemplateFillScreen(Screen):
         tokens = find_tokens(self.template.text)
         self.fillable, self.structural = classify_tokens(tokens, self.app.registry)
 
-        # Pre-fill from memory
+        # Pre-fill from registry values and session memory
         for p in self.fillable:
-            remembered = self.app.memory.get(p.name)
-            if remembered:
-                self.values[p.name] = remembered
+            session_val = self.app.memory.get(p.name)
+            if session_val:
+                self.values[p.name] = session_val
+            elif p.value is not None:
+                # Registry has a value — pre-fill but still require confirmation
+                pass  # don't add to self.values; show as pre-filled in input
 
         with Vertical(id="template-fill"):
             # Header
@@ -83,7 +87,7 @@ class TemplateFillScreen(Screen):
             # Footer
             unfilled = self._unfilled_count()
             status = f" {len(self.fillable) - unfilled}/{len(self.fillable)} filled"
-            status += "  |  Ctrl+Y: Copy  |  Tab: Next  |  Esc: Back"
+            status += "  |  Ctrl+O: Preview  |  Ctrl+Y: Copy  |  Tab: Next  |  Esc: Back"
             yield Static(status, id="fill-footer")
 
     def _current_placeholder(self) -> PlaceholderInfo:
@@ -101,29 +105,34 @@ class TemplateFillScreen(Screen):
 
     def _build_input_widgets(self, p: PlaceholderInfo) -> Vertical:
         """Build input widgets for the current placeholder."""
-        container = Vertical()
-        remembered = self.values.get(p.name)
+        # Check for pre-existing value: session memory first, then registry
+        prefill = self.app.memory.get(p.name) or p.value
 
         name_label = Label(f"[{p.name}]", classes="placeholder-name", markup=False)
+        preview_btn = Button("Preview", id="preview-btn")
+        name_row = Horizontal(name_label, preview_btn, id="name-row")
         desc_label = Label(p.description, classes="placeholder-desc", markup=False)
 
         if p.ui_type in (UIType.TEXT, UIType.AI_FEEDBACK, UIType.LIST):
             hint = "Enter file path to read content, or paste text directly"
-            if remembered:
-                display = remembered if len(remembered) <= 80 else remembered[:77] + "..."
-                hint = f"Remembered: {display}  (Enter to reuse)"
             input_widget = TextArea(id="value-input")
             input_widget.styles.height = 4
+            if prefill:
+                input_widget.text = prefill
         else:
             hint = "Enter value"
             if p.ui_type == UIType.PATH:
                 hint = "Enter file/directory path"
             elif p.ui_type == UIType.NAME:
                 hint = "Enter name"
-            if remembered:
-                display = remembered if len(remembered) <= 80 else remembered[:77] + "..."
-                hint = f"Remembered: {display}  (Enter to reuse)"
-            initial_value = "@" if p.ui_type == UIType.PATH and not remembered else ""
+
+            if prefill:
+                # PATH-type: prepend @ to the value
+                initial_value = f"@{prefill}" if p.ui_type == UIType.PATH else prefill
+            else:
+                # Empty PATH inputs start with @
+                initial_value = "@" if p.ui_type == UIType.PATH else ""
+
             input_widget = Input(
                 value=initial_value,
                 placeholder=hint,
@@ -133,10 +142,8 @@ class TemplateFillScreen(Screen):
         confirm_btn = Button("Confirm", variant="primary", id="confirm-btn")
         skip_btn = Button("Skip", id="skip-btn")
 
-        container._nodes = [name_label, desc_label, input_widget]
-        # Use compose_add_child pattern
         return Vertical(
-            name_label,
+            name_row,
             desc_label,
             input_widget,
             Horizontal(confirm_btn, skip_btn),
@@ -163,9 +170,13 @@ class TemplateFillScreen(Screen):
         """Render preview with values substituted, large values collapsed."""
         preview_values = {}
         for name, value in self.values.items():
+            # PATH-type: prepend @ for display
+            p_info = self.app.registry.get(name)
+            if p_info and p_info.ui_type == UIType.PATH:
+                value = f"@{value}"
+
             lines = value.split("\n")
             if len(lines) > COLLAPSE_THRESHOLD:
-                # Collapse large values
                 short = value[:60].replace("\n", " ")
                 preview_values[name] = f"[{name} -> {len(lines)} lines: {short}...]"
             else:
@@ -183,12 +194,16 @@ class TemplateFillScreen(Screen):
         )
         unfilled = self._unfilled_count()
         status = f" {len(self.fillable) - unfilled}/{len(self.fillable)} filled"
-        status += "  |  Ctrl+Y: Copy  |  Tab: Next  |  Esc: Back"
+        status += "  |  Ctrl+O: Preview  |  Ctrl+Y: Copy  |  Tab: Next  |  Esc: Back"
         self.query_one("#fill-footer", Static).update(status)
 
     async def _accept_value(self, value: str) -> None:
         """Accept a value for the current placeholder."""
         p = self.fillable[self.current_idx % len(self.fillable)]
+
+        # For PATH-type: strip the @ prefix before storing — @ is only for display/output
+        if p.ui_type == UIType.PATH and value.startswith("@"):
+            value = value[1:]
 
         # For TEXT/AI_FEEDBACK/LIST: if value looks like a file path, read it
         if p.ui_type in (UIType.TEXT, UIType.AI_FEEDBACK, UIType.LIST):
@@ -247,15 +262,13 @@ class TemplateFillScreen(Screen):
                 return
 
             if not value:
-                p = self.fillable[self.current_idx % len(self.fillable)]
-                remembered = self.values.get(p.name) or self.app.memory.get(p.name)
-                if remembered:
-                    value = remembered
-                else:
-                    self.notify("Please enter a value.", severity="warning")
-                    return
+                self.notify("Please enter a value.", severity="warning")
+                return
 
             await self._accept_value(value)
+
+        elif event.button.id == "preview-btn":
+            self._open_preview()
 
         elif event.button.id == "copy-btn":
             self.action_copy_to_clipboard()
@@ -268,18 +281,48 @@ class TemplateFillScreen(Screen):
         """Handle Enter key in Input widget."""
         if event.input.id == "value-input":
             value = event.value.strip()
-            p = self.fillable[self.current_idx % len(self.fillable)]
             if not value:
-                remembered = self.values.get(p.name) or self.app.memory.get(p.name)
-                if remembered:
-                    value = remembered
-                else:
-                    return
+                return
             await self._accept_value(value)
+
+    def _open_preview(self) -> None:
+        """Open a preview modal with the current input content."""
+        content = self._get_current_input_content()
+        if not content:
+            self.notify("No content to preview.", severity="warning")
+            return
+
+        p = self.fillable[self.current_idx % len(self.fillable)]
+        from template_filler_tui.screens.content_preview import ContentPreviewScreen
+        self.app.push_screen(ContentPreviewScreen(f"[{p.name}]", content, source_path=p.source_path))
+
+    def _get_current_input_content(self) -> str:
+        """Get the current text from the input widget."""
+        try:
+            widget = self.query_one("#value-input")
+            if isinstance(widget, TextArea):
+                return widget.text.strip()
+            elif isinstance(widget, Input):
+                return widget.value.strip()
+        except Exception:
+            pass
+        return ""
+
+    def action_preview_content(self) -> None:
+        """Keyboard shortcut to open content preview."""
+        self._open_preview()
 
     def action_copy_to_clipboard(self) -> None:
         """Copy the fully expanded result to clipboard."""
-        result = substitute(self.template.text, self.values)
+        # Build output values with @ prepended for PATH-type placeholders
+        output_values = {}
+        for name, value in self.values.items():
+            p_info = self.app.registry.get(name)
+            if p_info and p_info.ui_type == UIType.PATH:
+                output_values[name] = f"@{value}"
+            else:
+                output_values[name] = value
+        result = substitute(self.template.text, output_values)
         try:
             subprocess.run(
                 ["pbcopy"], input=result.encode("utf-8"), check=True
@@ -289,5 +332,4 @@ class TemplateFillScreen(Screen):
             self.notify(f"Copy failed: {e}", severity="error")
 
     def action_go_back(self) -> None:
-        self.app.memory.save()
         self.app.pop_screen()

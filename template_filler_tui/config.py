@@ -23,4 +23,3 @@ DIRECTORY_ROOTS = [
     ),
 ]
 
-MEMORY_PATH = Path(__file__).parent / "data" / "memory.json"

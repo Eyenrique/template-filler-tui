@@ -22,6 +22,8 @@ class PlaceholderInfo:
     name: str           # e.g., "PATH-EXAMPLE-GOLDEN-METHODOLOGY-FILE-UX"
     description: str    # from the registry
     ui_type: UIType     # derived from name pattern
+    value: str | None = None  # pre-filled value from registry Value column
+    source_path: str | None = None  # file path if value was loaded via @ reference
 
 
 # Matches any [...] token in template text
@@ -51,9 +53,9 @@ def load_registry(path: Path) -> dict[str, PlaceholderInfo]:
     registry: dict[str, PlaceholderInfo] = {}
 
     # Parse the markdown table rows
-    # Format: | Line(s) | `[PLACEHOLDER-NAME]` | Description |
+    # Format: | Line(s) | `[PLACEHOLDER-NAME]` | Description | Value |
     row_re = re.compile(
-        r'^\|\s*[\d,\s]+\s*\|\s*`\[([^\]]+)\]`\s*\|\s*(.*?)\s*\|$'
+        r'^\|\s*[\d,\s]+\s*\|\s*`\[([^\]]+)\]`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|$'
     )
 
     for line in text.split("\n"):
@@ -61,14 +63,47 @@ def load_registry(path: Path) -> dict[str, PlaceholderInfo]:
         if m:
             name = m.group(1)
             description = m.group(2).strip()
+            raw_value = m.group(3).strip()
             ui_type = derive_ui_type(name)
+
+            # Resolve the value
+            value, source_path = _resolve_value(raw_value) if raw_value else (None, None)
+
             registry[name] = PlaceholderInfo(
                 name=name,
                 description=description,
                 ui_type=ui_type,
+                value=value,
+                source_path=source_path,
             )
 
     return registry
+
+
+def _resolve_value(raw: str) -> tuple[str | None, str | None]:
+    """Resolve a registry Value column entry.
+
+    Returns (value, source_path) where:
+    - Empty or whitespace -> (None, None)
+    - Starts with @ -> (file content, file path)
+    - Otherwise -> (literal value, None)
+    """
+    raw = raw.strip()
+    if not raw:
+        return None, None
+
+    # Strip surrounding backticks if present (markdown formatting)
+    if raw.startswith("`") and raw.endswith("`"):
+        raw = raw[1:-1].strip()
+
+    if raw.startswith("@"):
+        file_path = Path(raw[1:]).expanduser()
+        if file_path.exists() and file_path.is_file():
+            content = file_path.read_text(encoding="utf-8").strip()
+            return content, str(file_path)
+        return None, None  # file not found — treat as no value
+
+    return raw, None
 
 
 def find_tokens(template_text: str) -> list[str]:

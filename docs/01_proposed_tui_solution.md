@@ -159,17 +159,22 @@ This is the single source of truth for persistent/global values. To add, change,
 
 #### PATH-type `@` Prefix
 
-For PATH-type placeholders (names starting with `PATH-`), the TUI always prepends `@` to the value in the input field. This applies whether the value comes from the registry or is entered manually. The `@` prefix is part of the final output that gets substituted into the template.
+For PATH-type placeholders (names starting with `PATH-`), the `@` prefix is strictly a **display and output concern** — it is never part of the stored value.
 
-This means PATH values in the registry are stored as clean paths (e.g., `/Users/.../file.md`), and the TUI displays them as `@/Users/.../file.md` in the input field.
+- **Stored values** (registry Value column, session memory): always clean paths without `@` (e.g., `/Users/.../file.md`)
+- **Input field**: `@` is prepended for display (e.g., `@/Users/.../file.md`)
+- **Live preview**: `@` is prepended at render time
+- **Clipboard output**: `@` is prepended at copy time
 
-**Important:** The `@` prefix in the registry Value column (for file references) and the `@` prefix for PATH-type inputs are two different things:
+When a PATH value is confirmed, the `@` is stripped before storing. This ensures session memory values always match the registry format, and the `@` is only added at the moment it's needed for display or output.
+
+**Important:** The `@` prefix in the registry Value column (for file references) and the `@` prefix for PATH-type outputs are two different things:
 - Registry `@/path` → "read this file's content" (used for large TEXT-type values)
-- PATH-type input `@/path` → literal prefix that appears in the final template output
+- PATH-type output `@/path` → literal prefix that appears in the final template output
 
 #### Session Values (Temporary)
 
-Values entered during a session are remembered for the duration of that session. If the same placeholder appears in multiple templates within a session, the previously entered value is offered as the default. Session values are not persisted — they are lost when the app closes.
+Values entered during a session are remembered for the duration of that session. If the same placeholder appears in multiple templates within a session, the previously entered value is offered as the default. Session values are stored in the same format as the registry — clean values without display prefixes. Session values are not persisted — they are lost when the app closes.
 
 ---
 
@@ -192,10 +197,23 @@ Values entered during a session are remembered for the duration of that session.
   - Insertion markers / structure tokens: dimmed, visually distinct
 - **Right panel:** Live preview of the filled result
 - **Bottom panel:** Placeholder input area
-  - Shows current placeholder being filled
+  - Shows current placeholder name and description
   - Type-appropriate input widget (path autocomplete, file picker, text input, multi-line)
-  - Shows remembered value if available (press Enter to reuse)
-- **Footer:** Keyboard shortcuts (Tab: next placeholder, Enter: confirm, Ctrl+C: copy result, Esc: back)
+  - Pre-filled from registry values or session memory; user must confirm to accept
+  - **Content Preview button** — positioned next to the placeholder name, opens a scrollable read-only modal overlay showing the full content of the current input. Available only when the input has content (pre-filled or typed/pasted). Dismissed with Esc or [X] button. Also accessible via Ctrl+O. The preview header shows:
+    - **Line count** — always displayed (e.g., "248 lines")
+    - **Source file path** (full, wraps to multiple lines if needed) — only displayed when the value was loaded from a file via `@` reference in the registry. Not shown for values that were typed/pasted or stored as literal text in the registry.
+- **Footer:** Keyboard shortcuts
+
+### 6.5 Keyboard Shortcuts (Template Fill Screen)
+
+| Shortcut | Action |
+|---|---|
+| Tab | Next placeholder |
+| Enter | Confirm value (in Input widget) |
+| Ctrl+O | Open content preview |
+| Ctrl+Y | Copy filled template to clipboard |
+| Esc | Go back to step browser |
 
 ### 6.4 Output / Copy Screen
 - Full preview of the final filled template

@@ -25,18 +25,27 @@ Build and verify the foundation before touching any TUI code.
 
 ### 2.2 Placeholder System (`models/placeholder.py`)
 
-- Load `Placeholder_Registry.md` as the source of truth
+- Load `Placeholder_Registry.md` as the source of truth, including the **Value** column
 - Detect `[...]` tokens in template text
 - Registry lookup: in registry → fillable, not in registry → structural (skip)
 - UI type derivation from name pattern: `PATH-*` → PATH, `*-TEXT` → TEXT, `*-NAME` → NAME, `*-LIST` → LIST, `AI-*` → AI-FEEDBACK
+- Registry value loading:
+  - Empty Value column → no pre-fill, ask the user
+  - Direct value → store as the pre-fill value
+  - `@/path/to/file` → read file content, store as the pre-fill value
+- PATH-type `@` prefix handling — `@` is strictly a display/output concern, never stored:
+  - On confirm: strip `@` before storing in session memory and values
+  - On display (input field, live preview, clipboard): prepend `@` at render/output time
+  - Stored values always match registry format (clean paths without `@`)
 - Substitution: replace fillable placeholders with provided values
 
-### 2.3 Memory System (`models/memory.py`)
+### 2.3 Session Memory (`models/memory.py`)
 
-- Three layers: session, domain, global
-- Persistence: save/load from JSON file
-- Lookup order: session → domain → global
-- Override support: user can change any remembered value
+- Single layer: session values (temporary, not persisted)
+- Values entered during a session are remembered for the duration of that session
+- If the same placeholder appears in multiple templates, the previously entered value is offered as the default
+- Session values are stored in the same format as registry values — clean, no display prefixes
+- Registry values (from the Value column) serve as the persistent/global layer — managed by editing the registry file directly, not through the TUI
 
 ### 2.4 Verification
 
@@ -76,14 +85,20 @@ Build and verify the foundation before touching any TUI code.
   - NAME → inline text input
   - LIST → multi-line input
   - AI-FEEDBACK → multi-line paste
-- Memory pre-fill: show remembered value, Enter to reuse
-- **Footer:** keyboard shortcuts
+- Pre-fill: registry values and session values shown in input, user confirms or overrides
+- **Content Preview**: a "Preview" button next to the placeholder name + Ctrl+O shortcut
+  - Opens a scrollable, read-only modal overlay showing the full content of the current input
+  - Available only when the input has content (pre-filled or typed/pasted)
+  - Dismissed with Esc or [X] button
+  - Strictly read-only — no editing from the preview
+  - Header displays line count (always) and source file path as full path, wrapping to multiple lines if needed (only for values loaded via `@` file reference in registry)
+- **Keyboard shortcuts:** Tab (next placeholder), Enter (confirm value), Ctrl+O (content preview), Ctrl+Y (copy to clipboard), Esc (back)
 - Copy to clipboard on completion
 
 ## Phase 4: Integration and Polish
 
 - Wire all screens together with session context flowing through
-- Session persistence: track completed steps per domain/phase
+- Registry values loaded on launch, pre-filling placeholders across all templates
 - Clipboard output: always full expanded text (no collapse)
 - Edge cases: templates with zero fillable placeholders (ready as-is), empty templates
 
