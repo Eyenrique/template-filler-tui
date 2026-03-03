@@ -28,7 +28,7 @@ Build and verify the foundation before touching any TUI code.
 - Load `Placeholder_Registry.md` as the source of truth, including the **Value** column
 - Detect `[...]` tokens in template text
 - Registry lookup: in registry → fillable, not in registry → structural (skip)
-- UI type derivation from name pattern: `PATH-*` → PATH, `*-TEXT` → TEXT, `*-NAME` → NAME, `*-LIST` → LIST, `AI-*` → AI-FEEDBACK
+- UI type derivation from name pattern (first match wins): `PATH-COMPONENT-*` → NAME, `PATH-*` → PATH, `AI-*` → AI-FEEDBACK, `*-TEXT` → TEXT, `*-NAME` → NAME, `*-LIST` → LIST, `*-DIR` → NAME, fallback → NAME
 - Registry value loading:
   - Empty Value column → no pre-fill, ask the user
   - Direct value → store as the pre-fill value

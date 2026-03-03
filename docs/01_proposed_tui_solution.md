@@ -80,12 +80,15 @@ The unified `UPPER-HYPHEN-CASE` naming convention makes UI type **deterministic 
 
 | Name pattern | UI type | Input method | Count |
 |-------------|---------|--------------|-------|
-| `PATH-*` | PATH | Path input with **autocomplete** from the known directory roots | 25 |
-| `*-TEXT` | TEXT | File picker → reads content → shows preview before confirming | 8 |
-| `*-NAME` / `PATH-COMPONENT-*` | NAME | Inline text input with session memory | 5 |
-| `*-LIST` | LIST | Multi-line input or file picker | 2 |
-| `AI-*` | AI-FEEDBACK | Multi-line paste input | 3 |
+| `PATH-*` | PATH | Inline text input with `@` prepend (display/output only) | 25 |
+| `*-TEXT` | TEXT | Multi-line TextArea | 8 |
+| `*-NAME` / `PATH-COMPONENT-*` | NAME | Inline text input | 5 |
+| `*-LIST` | LIST | Multi-line TextArea | 2 |
+| `*-DIR` | NAME | Inline text input (directory path without `@`) | — |
+| `AI-*` | AI-FEEDBACK | Multi-line TextArea | 3 |
 | `[INSERT ...]`, `[N]`, `[Domain-Specific Name]`, `[domain]`, `[DOMAIN]` | STRUCTURAL | **Not shown as fillable** — visually distinct, skipped automatically | 6 |
+
+Rules are checked top to bottom, first match wins. If `PATH-*` and `*-DIR` both match (e.g., `PATH-SOMETHING-DIR`), `PATH-*` wins. Fallback for unmatched names: NAME (inline text input).
 
 Total: **43 fillable** + **6 structural** (not fillable) = 49 placeholder tokens in code blocks.
 

@@ -44,7 +44,9 @@ def derive_ui_type(name: str) -> UIType:
         return UIType.NAME
     if name.endswith("-LIST"):
         return UIType.LIST
-    return UIType.PATH  # fallback for registered but unmatched
+    if name.endswith("-DIR"):
+        return UIType.NAME
+    return UIType.NAME  # fallback for registered but unmatched
 
 
 def load_registry(path: Path) -> dict[str, PlaceholderInfo]:
@@ -98,10 +100,12 @@ def _resolve_value(raw: str) -> tuple[str | None, str | None]:
 
     if raw.startswith("@"):
         file_path = Path(raw[1:]).expanduser()
-        if file_path.exists() and file_path.is_file():
-            content = file_path.read_text(encoding="utf-8").strip()
-            return content, str(file_path)
-        return None, None  # file not found — treat as no value
+        if not file_path.exists() or not file_path.is_file():
+            raise FileNotFoundError(
+                f"Registry file reference not found: {file_path}"
+            )
+        content = file_path.read_text(encoding="utf-8").strip()
+        return content, str(file_path)
 
     return raw, None
 

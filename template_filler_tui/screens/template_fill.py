@@ -1,7 +1,6 @@
 """Template Fill screen — placeholder filling with live preview."""
 
 import subprocess
-from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -82,7 +81,7 @@ class TemplateFillScreen(Screen):
                     yield self._build_input_widgets(p)
                 else:
                     yield Static("No placeholders to fill — template is ready.")
-                    yield Button("Copy to Clipboard", variant="success", id="copy-btn")
+                    yield Button("Copy to Clipboard", variant="default", id="copy-btn")
 
             # Footer
             unfilled = self._unfilled_count()
@@ -205,14 +204,6 @@ class TemplateFillScreen(Screen):
         if p.ui_type == UIType.PATH and value.startswith("@"):
             value = value[1:]
 
-        # For TEXT/AI_FEEDBACK/LIST: if value looks like a file path, read it
-        if p.ui_type in (UIType.TEXT, UIType.AI_FEEDBACK, UIType.LIST):
-            stripped = value.strip()
-            if len(stripped) < 1024 and "\n" not in stripped:
-                path = Path(stripped).expanduser()
-                if path.exists() and path.is_file():
-                    value = path.read_text(encoding="utf-8").strip()
-
         self.values[p.name] = value
 
         # Save to memory (session level by default)
@@ -229,7 +220,7 @@ class TemplateFillScreen(Screen):
         await input_panel.remove_children()
 
         if self._unfilled_count() == 0:
-            copy_btn = Button("Copy to Clipboard", variant="success", id="copy-btn")
+            copy_btn = Button("Copy to Clipboard", variant="default", id="copy-btn")
             await input_panel.mount(
                 Vertical(
                     Static("All placeholders filled!"),
@@ -328,6 +319,12 @@ class TemplateFillScreen(Screen):
                 ["pbcopy"], input=result.encode("utf-8"), check=True
             )
             self.notify("Copied to clipboard!", severity="information")
+            try:
+                btn = self.query_one("#copy-btn", Button)
+                btn.variant = "success"
+                btn.label = "Copied!"
+            except Exception:
+                pass
         except Exception as e:
             self.notify(f"Copy failed: {e}", severity="error")
 
