@@ -143,6 +143,40 @@ def classify_tokens(
     return fillable, structural
 
 
+# Matches UPPER-HYPHEN-CASE names (real placeholder convention)
+_PLACEHOLDER_NAME_RE = re.compile(r'^[A-Z][A-Z0-9]+(-[A-Z0-9]+)+$')
+
+
+def find_unregistered_placeholders(
+    steps: list,
+    registry: dict[str, "PlaceholderInfo"],
+) -> list[str]:
+    """Find tokens in methodology templates that look like placeholders
+    (UPPER-HYPHEN-CASE) but are not in the registry.
+
+    These are likely placeholders that were renamed in the methodology
+    but not updated in the registry.
+    """
+    unregistered: set[str] = set()
+
+    for step in steps:
+        for turn in step.turns:
+            for tmpl in turn.templates:
+                tokens = find_tokens(tmpl.text)
+                _, structural = classify_tokens(tokens, registry)
+                for token in structural:
+                    if _PLACEHOLDER_NAME_RE.match(token):
+                        unregistered.add(token)
+        for tmpl in step.standalone_templates:
+            tokens = find_tokens(tmpl.text)
+            _, structural = classify_tokens(tokens, registry)
+            for token in structural:
+                if _PLACEHOLDER_NAME_RE.match(token):
+                    unregistered.add(token)
+
+    return sorted(unregistered)
+
+
 def substitute(template_text: str, values: dict[str, str]) -> str:
     """Replace all [PLACEHOLDER] tokens with their values."""
     result = template_text

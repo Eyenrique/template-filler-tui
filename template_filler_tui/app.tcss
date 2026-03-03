@@ -100,15 +100,17 @@ Screen {
     width: 1fr;
     height: 100%;
     border-right: solid $accent;
-    overflow-y: auto;
     padding: 0 1;
 }
 
 #preview-panel {
     width: 1fr;
     height: 100%;
-    overflow-y: auto;
     padding: 0 1;
+}
+
+#template-display, #preview-display {
+    height: 1fr;
 }
 
 #input-panel {
@@ -200,6 +202,45 @@ ContentPreviewScreen {
 #preview-modal-content {
     height: 1fr;
     margin-top: 1;
+}
+
+/* ── Unregistered Placeholders Modal ─────────────────── */
+
+UnregisteredWarningScreen {
+    align: center middle;
+}
+
+#unregistered-modal {
+    width: 80%;
+    height: 70%;
+    border: thick $warning;
+    background: $surface;
+    padding: 1 2;
+}
+
+#unregistered-modal-header {
+    height: auto;
+    width: 100%;
+}
+
+#unregistered-modal-title {
+    width: 1fr;
+    text-style: bold;
+    color: $warning;
+}
+
+#unregistered-modal-hint {
+    color: $text-muted;
+    margin-bottom: 1;
+}
+
+#unregistered-close-btn {
+    width: 5;
+    min-width: 5;
+}
+
+#unregistered-modal-content {
+    height: 1fr;
 }
 
 /* Preview button in input panel */

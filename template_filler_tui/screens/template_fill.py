@@ -59,20 +59,22 @@ class TemplateFillScreen(Screen):
             with Horizontal(id="fill-body"):
                 with Vertical(id="template-panel"):
                     yield Static("Template", markup=False)
-                    tmpl_display = Static(
-                        self._render_template(),
+                    tmpl_area = TextArea(
                         id="template-display",
-                        markup=False,
+                        read_only=True,
+                        show_line_numbers=True,
                     )
-                    yield tmpl_display
+                    tmpl_area.text = self._render_template()
+                    yield tmpl_area
                 with Vertical(id="preview-panel"):
                     yield Static("Preview", markup=False)
-                    prev_display = Static(
-                        self._render_preview(),
+                    prev_area = TextArea(
                         id="preview-display",
-                        markup=False,
+                        read_only=True,
+                        show_line_numbers=True,
                     )
-                    yield prev_display
+                    prev_area.text = self._render_preview()
+                    yield prev_area
 
             # Input panel
             with Vertical(id="input-panel"):
@@ -113,7 +115,7 @@ class TemplateFillScreen(Screen):
         desc_label = Label(p.description, classes="placeholder-desc", markup=False)
 
         if p.ui_type in (UIType.TEXT, UIType.AI_FEEDBACK, UIType.LIST):
-            hint = "Enter file path to read content, or paste text directly"
+            hint = "Paste or enter text"
             input_widget = TextArea(id="value-input")
             input_widget.styles.height = 4
             if prefill:
@@ -185,12 +187,8 @@ class TemplateFillScreen(Screen):
 
     def _update_displays(self) -> None:
         """Refresh template and preview displays."""
-        self.query_one("#template-display", Static).update(
-            self._render_template()
-        )
-        self.query_one("#preview-display", Static).update(
-            self._render_preview()
-        )
+        self.query_one("#template-display", TextArea).text = self._render_template()
+        self.query_one("#preview-display", TextArea).text = self._render_preview()
         unfilled = self._unfilled_count()
         status = f" {len(self.fillable) - unfilled}/{len(self.fillable)} filled"
         status += "  |  Ctrl+O: Preview  |  Ctrl+Y: Copy  |  Tab: Next  |  Esc: Back"
