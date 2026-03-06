@@ -156,7 +156,16 @@ The Value column follows these conventions:
 |---|---|
 | Empty | Ask the user to fill it manually |
 | Direct value (e.g., `/Users/.../file.md`) | Pre-fill the input with this value; user must confirm to use it |
-| File reference (`@/path/to/file.md`) | Read the file's content, pre-fill the input with that content; user must confirm |
+| File reference (`@/path/to/file.md`) | Read the entire file's content, pre-fill the input with that content; user must confirm |
+| File reference with extractor (`@/path/to/file.md::extractor(args)`) | Read the file and extract only the matched portion; user must confirm |
+
+**Extraction syntax:** File references can include `::` followed by an extractor to load only a specific portion of a file:
+
+- `between(START, END)` — text between the first occurrence of `START` and the next `END` (markers excluded)
+- `heading(## Section Name)` — markdown section under the specified heading, up to the next same-or-higher-level heading
+- `lines(start, end)` — line range by number (1-indexed, inclusive)
+
+No extractor means the entire file is loaded (backwards compatible). First match wins when a pattern appears multiple times. Missing matches fail hard — same as missing file references.
 
 This is the single source of truth for persistent/global values. To add, change, or remove a persistent value, the user edits the registry file directly — the same way they edit the methodology file to change templates.
 
@@ -174,6 +183,12 @@ When a PATH value is confirmed, the `@` is stripped before storing. This ensures
 **Important:** The `@` prefix in the registry Value column (for file references) and the `@` prefix for PATH-type outputs are two different things:
 - Registry `@/path` → "read this file's content" (used for large TEXT-type values)
 - PATH-type output `@/path` → literal prefix that appears in the final template output
+
+#### Runtime Extraction (Exception)
+
+File reading is exclusively a registry load-time operation, with one exception: if the user types `@/path/to/file::extractor(args)` into any input field at runtime and confirms, the TUI reads the file, applies the extractor, and replaces the placeholder with the extracted content — not the path.
+
+This only triggers when `::` is present. A plain `@/path` entered at runtime is never read as a file — it remains a literal value. The same three extractors available in the registry (`between`, `heading`, `lines`) work at runtime with the same rules (first match wins, stripped, missing match shows an error).
 
 #### Session Values (Temporary)
 

@@ -11,6 +11,7 @@ from textual.binding import Binding
 from template_filler_tui.models.methodology import Template
 from template_filler_tui.models.placeholder import (
     find_tokens, classify_tokens, substitute, PlaceholderInfo, UIType,
+    _resolve_value,
 )
 
 
@@ -198,8 +199,18 @@ class TemplateFillScreen(Screen):
         """Accept a value for the current placeholder."""
         p = self.fillable[self.current_idx % len(self.fillable)]
 
+        # Runtime extraction: @/path/to/file::extractor(args)
+        if value.startswith("@") and "::" in value:
+            try:
+                extracted, source_path = _resolve_value(value)
+                if extracted is not None:
+                    value = extracted
+            except (FileNotFoundError, ValueError) as e:
+                self.notify(str(e), severity="error")
+                return
+
         # For PATH-type: strip the @ prefix before storing — @ is only for display/output
-        if p.ui_type == UIType.PATH and value.startswith("@"):
+        elif p.ui_type == UIType.PATH and value.startswith("@"):
             value = value[1:]
 
         self.values[p.name] = value
@@ -282,8 +293,20 @@ class TemplateFillScreen(Screen):
             return
 
         p = self.fillable[self.current_idx % len(self.fillable)]
+        source_path = p.source_path
+
+        # Resolve runtime extraction syntax for preview
+        if content.startswith("@") and "::" in content:
+            try:
+                extracted, source_path = _resolve_value(content)
+                if extracted is not None:
+                    content = extracted
+            except (FileNotFoundError, ValueError) as e:
+                self.notify(str(e), severity="error")
+                return
+
         from template_filler_tui.screens.content_preview import ContentPreviewScreen
-        self.app.push_screen(ContentPreviewScreen(f"[{p.name}]", content, source_path=p.source_path))
+        self.app.push_screen(ContentPreviewScreen(f"[{p.name}]", content, source_path=source_path))
 
     def _get_current_input_content(self) -> str:
         """Get the current text from the input widget."""

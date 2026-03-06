@@ -55,9 +55,9 @@ def load_registry(path: Path) -> dict[str, PlaceholderInfo]:
     registry: dict[str, PlaceholderInfo] = {}
 
     # Parse the markdown table rows
-    # Format: | Line(s) | `[PLACEHOLDER-NAME]` | Description | Value |
+    # Format: | `[PLACEHOLDER-NAME]` | Description | Value |
     row_re = re.compile(
-        r'^\|\s*[\d,\s]+\s*\|\s*`\[([^\]]+)\]`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|$'
+        r'^\|\s*`\[([^\]]+)\]`\s*\|\s*(.*?)\s*\|\s*(.*?)\s*\|$'
     )
 
     for line in text.split("\n"):
@@ -88,6 +88,7 @@ def _resolve_value(raw: str) -> tuple[str | None, str | None]:
     Returns (value, source_path) where:
     - Empty or whitespace -> (None, None)
     - Starts with @ -> (file content, file path)
+    - @/path::extractor(args) -> (extracted portion, file path)
     - Otherwise -> (literal value, None)
     """
     raw = raw.strip()
@@ -99,15 +100,142 @@ def _resolve_value(raw: str) -> tuple[str | None, str | None]:
         raw = raw[1:-1].strip()
 
     if raw.startswith("@"):
-        file_path = Path(raw[1:]).expanduser()
+        ref = raw[1:]
+
+        # Split file path from extractor at ::
+        extractor = None
+        if "::" in ref:
+            path_part, extractor = ref.split("::", 1)
+        else:
+            path_part = ref
+
+        file_path = Path(path_part.strip()).expanduser()
         if not file_path.exists() or not file_path.is_file():
             raise FileNotFoundError(
                 f"Registry file reference not found: {file_path}"
             )
-        content = file_path.read_text(encoding="utf-8").strip()
+        content = file_path.read_text(encoding="utf-8")
+
+        if extractor:
+            content = _apply_extractor(content, extractor.strip(), str(file_path))
+        else:
+            content = content.strip()
+
         return content, str(file_path)
 
     return raw, None
+
+
+# Matches extractor calls like: between(X, Y), heading(## Foo), lines(1, 20)
+_EXTRACTOR_RE = re.compile(r'^(\w+)\((.+)\)$', re.DOTALL)
+
+
+def _apply_extractor(content: str, extractor: str, file_path: str) -> str:
+    """Apply an extraction rule to file content."""
+    m = _EXTRACTOR_RE.match(extractor)
+    if not m:
+        raise ValueError(f"Invalid extractor syntax: {extractor}")
+
+    name = m.group(1)
+    args_str = m.group(2)
+
+    if name == "between":
+        return _extract_between(content, args_str, file_path)
+    elif name == "heading":
+        return _extract_heading(content, args_str, file_path)
+    elif name == "lines":
+        return _extract_lines(content, args_str, file_path)
+    else:
+        raise ValueError(f"Unknown extractor: {name}")
+
+
+def _extract_between(content: str, args_str: str, file_path: str) -> str:
+    """Extract text between first occurrence of START and next END (markers excluded)."""
+    # Split on first comma that's not inside the markers themselves
+    parts = args_str.split(",", 1)
+    if len(parts) != 2:
+        raise ValueError(f"between() requires two arguments, got: {args_str}")
+
+    start_marker = parts[0].strip()
+    end_marker = parts[1].strip()
+
+    start_idx = content.find(start_marker)
+    if start_idx == -1:
+        raise ValueError(
+            f"Extractor between(): start marker {start_marker!r} not found in {file_path}"
+        )
+
+    after_start = start_idx + len(start_marker)
+    end_idx = content.find(end_marker, after_start)
+    if end_idx == -1:
+        raise ValueError(
+            f"Extractor between(): end marker {end_marker!r} not found after start marker in {file_path}"
+        )
+
+    return content[after_start:end_idx].strip()
+
+
+def _extract_heading(content: str, args_str: str, file_path: str) -> str:
+    """Extract markdown section under a heading, up to next same-or-higher-level heading."""
+    heading = args_str.strip()
+
+    # Determine heading level from the # prefix
+    level = 0
+    for ch in heading:
+        if ch == "#":
+            level += 1
+        else:
+            break
+
+    if level == 0:
+        raise ValueError(f"heading() argument must start with #: {heading}")
+
+    lines = content.split("\n")
+    start_line = None
+
+    for i, line in enumerate(lines):
+        if line.strip() == heading:
+            start_line = i + 1
+            break
+
+    if start_line is None:
+        raise ValueError(
+            f"Extractor heading(): heading {heading!r} not found in {file_path}"
+        )
+
+    # Collect lines until next same-or-higher-level heading
+    result_lines = []
+    heading_re = re.compile(r'^(#{1,' + str(level) + r'})\s')
+
+    for i in range(start_line, len(lines)):
+        if heading_re.match(lines[i]):
+            break
+        result_lines.append(lines[i])
+
+    return "\n".join(result_lines).strip()
+
+
+def _extract_lines(content: str, args_str: str, file_path: str) -> str:
+    """Extract a range of lines (1-indexed, inclusive)."""
+    parts = args_str.split(",", 1)
+    if len(parts) != 2:
+        raise ValueError(f"lines() requires two arguments, got: {args_str}")
+
+    try:
+        start = int(parts[0].strip())
+        end = int(parts[1].strip())
+    except ValueError:
+        raise ValueError(f"lines() arguments must be integers, got: {args_str}")
+
+    lines = content.split("\n")
+    if start < 1 or end < start or start > len(lines):
+        raise ValueError(
+            f"Extractor lines({start}, {end}): out of range for {file_path} ({len(lines)} lines)"
+        )
+
+    # Clamp end to file length
+    end = min(end, len(lines))
+    return "\n".join(lines[start - 1:end]).strip()
 
 
 def find_tokens(template_text: str) -> list[str]:

@@ -32,7 +32,20 @@ Build and verify the foundation before touching any TUI code.
 - Registry value loading:
   - Empty Value column → no pre-fill, ask the user
   - Direct value → store as the pre-fill value
-  - `@/path/to/file` → read file content, store as the pre-fill value
+  - `@/path/to/file` → read entire file content, store as the pre-fill value
+  - `@/path/to/file::extractor(args)` → read file, apply extractor, store matched portion as the pre-fill value
+    - `between(START, END)` — text between first `START` and next `END` (markers excluded)
+    - `heading(## Section Name)` — markdown section under heading, up to next same-or-higher-level heading
+    - `lines(start, end)` — line range (1-indexed, inclusive)
+    - No extractor → entire file (backwards compatible)
+    - First match wins for repeated patterns
+    - Missing match → `FileNotFoundError` (same as missing file)
+- Runtime extraction (single exception to load-time-only file reading):
+  - If the user enters `@/path/to/file::extractor(args)` at runtime and confirms, the TUI reads the file, applies the extractor, and stores the extracted content as the placeholder value
+  - Only triggers when `::` is present — a plain `@/path` is never read at runtime
+  - Same extractors and rules as registry load time (`between`, `heading`, `lines`)
+  - Errors (missing file, no match) shown as notification — does not crash the app
+  - Implemented in `_accept_value` in `template_fill.py`
 - PATH-type `@` prefix handling — `@` is strictly a display/output concern, never stored:
   - On confirm: strip `@` before storing in session memory and values
   - On display (input field, live preview, clipboard): prepend `@` at render/output time
