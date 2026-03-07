@@ -30,6 +30,7 @@ class TemplateFillerApp(App):
         self._clipboard = text
         try:
             subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+            self.notify("Selection copied!", severity="information")
         except Exception:
             super().copy_to_clipboard(text)
 
